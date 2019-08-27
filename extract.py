@@ -26,7 +26,7 @@ def find_files(path):
 
             if ext in COMMANDS.keys():
                 if file_path not in EXTRACTED_FILES:
-                    logger.debug('File {0} accepted'.format(filename))
+                    logger.debug('File {0} accepted'.format(file_path))
                     EXTRACTED_FILES.append(file_path)
                     found_files.append(file_path)
 
