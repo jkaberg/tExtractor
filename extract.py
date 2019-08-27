@@ -40,12 +40,13 @@ def extract(paths, out_dir):
         filename, ext = os.path.splitext(p)
         cmd = COMMANDS.get(ext)
 
-        exec_bin = which(cmd[0])
-        if exec_bin == '':
-            logger.error('Cant find executable {0}, not extracting {1}'.format(exec_bin, p))
+        util = cmd.split()[0]
+        exec_path = which(util)
+        if not exec_path:
+            logger.error('Cant find executable {0}, not extracting {1}'.format(util, p))
             continue
 
-        cmd[0] = exec_bin
+        cmd = cmd.replace(util, exec_path)
 
         command = '{0} {1} {2}'.format(cmd, p, out_dir)
         logger.debug('Recived command: {0}'.format(command))
