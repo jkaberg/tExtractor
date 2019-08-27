@@ -5,6 +5,8 @@ import logging
 import argparse
 import subprocess
 
+from shutil import which
+
 
 EXTRACT_DIR = '__extracted'
 EXTRACTED_FILES = []
@@ -37,8 +39,15 @@ def extract(paths, out_dir):
 
         filename, ext = os.path.splitext(p)
         cmd = COMMANDS.get(ext)
-        command = '{0} {1} {2}'.format(cmd, p, out_dir)
 
+        exec_bin = which(cmd[0])
+        if exec_bin == '':
+            logger.error('Cant find executable {0}, not extracting {1}'.format(exec_bin, p))
+            continue
+
+        cmd[0] = exec_bin
+
+        command = '{0} {1} {2}'.format(cmd, p, out_dir)
         logger.debug('Recived command: {0}'.format(command))
 
         subprocess.run(command.split())
