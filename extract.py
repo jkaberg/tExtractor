@@ -59,15 +59,18 @@ def find_path(rootdir, name):
 def main(args):
     orig_dir = os.path.join(args.path, args.name)
     out_dir = find_path(args.path, args.name)
-
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+    found_files = False
 
     orig_files = find_files(orig_dir)
-    logger.debug('Files in orginal path {0}'.format(orig_files))
-    extract(orig_files, out_dir)
 
-    found_files = True 
+    if orig_files:
+        logger.debug('Files in orginal path {0}'.format(orig_files))
+
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+
+        extract(orig_files, out_dir)
+        found_files = True 
 
     while found_files:
         found_files = find_files(out_dir)
