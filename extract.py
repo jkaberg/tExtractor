@@ -59,28 +59,26 @@ def find_path(rootdir, name):
 def main(args):
     orig_dir = os.path.join(args.path, args.name)
     out_dir = find_path(args.path, args.name)
-    found_files = False
+    files = find_files(orig_dir)
 
-    orig_files = find_files(orig_dir)
-
-    if orig_files:
-        logger.debug('Files in orginal path {0}'.format(orig_files))
+    # extact compressed archives found in the orginal path
+    if files:
+        logger.debug('Files in orginal path {0}'.format(files))
 
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
 
-        extract(orig_files, out_dir)
-        found_files = True 
+        extract(files, out_dir)
 
-    while found_files:
-        found_files = find_files(out_dir)
+    # extract (also nested) archives found in the output path, if we found files in the orginal path
+    while files:
+        files = find_files(out_dir)
 
-        if not found_files:
-            logger.info('Finished processing directory {0}'.format(orig_dir))
+        if files:
+            logger.debug('Files in output path {0}'.format(files))
+            extract(files, out_dir)
         else:
-            logger.debug('Files in output path {0}'.format(found_files))
-
-            extract(found_files, out_dir)
+            logger.info('Finished processing directory {0}'.format(orig_dir))
 
 
 if __name__ == "__main__":
