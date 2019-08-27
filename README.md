@@ -1,7 +1,7 @@
 # tExtractor
 Extract torrents upon completion.
 
-The script will recursively scan the `<download_location>/<torrent_name>` folder for compressed archives and extract them to `<download_location>/<torrent_name>/__extracted` (it will also scan the `__extracted` directory for any additional compressed archives).
+The script will recursively scan the `<download_location>/<torrent_name>` folder for compressed archives and extract them to `<download_location>/<torrent_name>/__extracted` (it will also scan the `__extracted` directory for any additional compressed archives and extract them into the same directory).
 
 ## Help
 
