@@ -55,10 +55,10 @@ def extract(paths, out_dir):
 
 
 def find_path(path, name):
-    r = os.path.join(path, name)
+    path = os.path.join(path, name)
 
-    if not os.path.isdir(r):
-        path = os.path.join(r, EXTRACT_DIR)
+    if os.path.isdir(path):
+        path = os.path.join(path, EXTRACT_DIR)
     else:
         path = False
 
@@ -93,6 +93,8 @@ def main(args):
                     extract(files, out_dir)
                 else:
                     logger.info('Finished processing directory {0}'.format(orig_dir))
+    else:
+        logger.warn('This must be a single file torrent, not processing: {0}'.format(orig_dir))
 
 
 if __name__ == "__main__":
