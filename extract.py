@@ -54,41 +54,45 @@ def extract(paths, out_dir):
         subprocess.run(command.split())
 
 
-def find_path(rootdir, name):
-    r = os.path.join(rootdir, name)
+def find_path(path, name):
+    r = os.path.join(path, name)
 
     if not os.path.isdir(r):
-        r = rootdir
-    extract_dir = os.path.join(r, EXTRACT_DIR)
+        path = os.path.join(r, EXTRACT_DIR)
+    else:
+        path = False
 
-    logger.info('Output directory is {0}'.format(extract_dir))
+    logger.info('Output directory is {0}'.format(path))
     
-    return extract_dir
+    return path
 
 
 def main(args):
     orig_dir = os.path.join(args.path, args.name)
     out_dir = find_path(args.path, args.name)
-    files = find_files(orig_dir)
 
-    # extact compressed archives found in the orginal path
-    if files:
-        logger.debug('Files in orginal path {0}'.format(files))
+    # no out_dir means this is a single file torrent
+    if out_dir:
+        files = find_files(orig_dir)
 
-        if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
-
-        extract(files, out_dir)
-
-    # extract (also nested) archives found in the output path, if we found files in the orginal path
-    while files:
-        files = find_files(out_dir)
-
+        # extact compressed archives found in the orginal path
         if files:
-            logger.debug('Files in output path {0}'.format(files))
+            logger.debug('Files in orginal path {0}'.format(files))
+
+            if not os.path.exists(out_dir):
+                os.mkdir(out_dir)
+
             extract(files, out_dir)
-        else:
-            logger.info('Finished processing directory {0}'.format(orig_dir))
+
+            # extract (also nested) archives found in the output path, if we found files in the orginal path
+            while files:
+                files = find_files(out_dir)
+
+                if files:
+                    logger.debug('Files in output path {0}'.format(files))
+                    extract(files, out_dir)
+                else:
+                    logger.info('Finished processing directory {0}'.format(orig_dir))
 
 
 if __name__ == "__main__":
