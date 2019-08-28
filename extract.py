@@ -26,7 +26,7 @@ def find_files(path):
 
             if ext in COMMANDS.keys():
                 if file_path not in EXTRACTED_FILES:
-                    logger.debug('File {0} accepted'.format(file_path))
+                    logger.debug('Accepted: {0}'.format(file_path))
                     EXTRACTED_FILES.append(file_path)
                     found_files.append(file_path)
 
@@ -49,7 +49,7 @@ def extract(paths, out_dir):
         cmd = cmd.replace(util, exec_path)
 
         command = '{0} {1} {2}'.format(cmd, p, out_dir)
-        logger.debug('Recived command: {0}'.format(command))
+        logger.debug('Command: {0}'.format(command))
 
         subprocess.run(command.split())
 
@@ -62,7 +62,7 @@ def find_path(path, name):
     else:
         path = False
 
-    logger.info('Output directory is {0}'.format(path))
+    logger.info('Output directory: {0}'.format(path))
     
     return path
 
@@ -77,7 +77,7 @@ def main(args):
 
         # extact compressed archives found in the orginal path
         if files:
-            logger.debug('Files in orginal path {0}'.format(files))
+            logger.debug('Files in orginal path: {0}'.format(files))
 
             if not os.path.exists(out_dir):
                 os.mkdir(out_dir)
@@ -89,10 +89,10 @@ def main(args):
                 files = find_files(out_dir)
 
                 if files:
-                    logger.debug('Files in output path {0}'.format(files))
+                    logger.debug('Files in output path: {0}'.format(files))
                     extract(files, out_dir)
                 else:
-                    logger.info('Finished processing directory {0}'.format(orig_dir))
+                    logger.info('Finished processing directory: {0}'.format(orig_dir))
     else:
         logger.warn('This must be a single file torrent, not processing: {0}'.format(orig_dir))
 
