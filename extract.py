@@ -69,10 +69,9 @@ def find_path(path, name):
 
 def main(args):
     orig_dir = os.path.join(args.path, args.name)
-    out_dir = find_path(args.path, args.name)
-
     logger.debug('Processing directory: {0}'.format(orig_dir))
 
+    out_dir = find_path(args.path, args.name)
     # no out_dir means this is a single file torrent
     if out_dir:
         files = find_files(orig_dir)
