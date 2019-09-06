@@ -24,11 +24,10 @@ def find_files(path):
             file_path = os.path.join(dirpath, filename)
             filename, ext = os.path.splitext(file_path)
 
-            if ext in COMMANDS.keys():
-                if file_path not in EXTRACTED_FILES:
-                    logger.debug('Accepted: {0}'.format(os.path.basename(file_path)))
-                    EXTRACTED_FILES.append(file_path)
-                    found_files.append(file_path)
+            if ext in COMMANDS.keys() and file_path not in EXTRACTED_FILES:
+                logger.debug('Accepted: {0}'.format(os.path.basename(file_path)))
+                EXTRACTED_FILES.append(file_path)
+                found_files.append(file_path)
 
     return found_files
 
@@ -58,22 +57,20 @@ def find_path(path, name):
     path = os.path.join(path, name)
 
     if os.path.isdir(path):
-        path = os.path.join(path, EXTRACT_DIR)
-    else:
-        path = False
+        return os.path.join(path, EXTRACT_DIR)
 
-    logger.info('Output directory: {0}'.format(path))
-    
-    return path
+    return False
 
 
 def main(args):
     orig_dir = os.path.join(args.path, args.name)
     logger.debug('Processing directory: {0}'.format(orig_dir))
-
     out_dir = find_path(args.path, args.name)
+
     # no out_dir means this is a single file torrent
     if out_dir:
+        logger.info('Output directory: {0}'.format(out_dir))
+
         files = find_files(orig_dir)
 
         # extact compressed archives found in the orginal path
