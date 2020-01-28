@@ -89,7 +89,7 @@ def main(args):
                     logger.debug('Files in output path: {0}'.format(files))
                     extract(files, temp_dir)
                 else:
-                    logger.info('Finished processing directory: {0}'.format(temp_dir))
+                    logger.info('Finished processing directory: {0}'.format(orig_dir))
 
             if not os.path.exists(out_dir):
                 os.mkdir(out_dir)
