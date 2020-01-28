@@ -2,6 +2,7 @@
 
 import os
 import logging
+import tempfile
 import argparse
 import subprocess
 
@@ -66,6 +67,7 @@ def main(args):
     orig_dir = os.path.join(args.path, args.name)
     logger.debug('Processing directory: {0}'.format(orig_dir))
     out_dir = find_path(args.path, args.name)
+    temp_dir = tempfile.mkdtemp()
 
     # no out_dir means this is a single file torrent
     if out_dir:
@@ -77,20 +79,29 @@ def main(args):
         if files:
             logger.debug('Files in orginal path: {0}'.format(files))
 
-            if not os.path.exists(out_dir):
-                os.mkdir(out_dir)
-
-            extract(files, out_dir)
+            extract(files, temp_dir)
 
             # extract (also nested) archives found in the output path, if we found files in the orginal path
             while files:
-                files = find_files(out_dir)
+                files = find_files(temp_dir)
 
                 if files:
                     logger.debug('Files in output path: {0}'.format(files))
-                    extract(files, out_dir)
+                    extract(files, temp_dir)
                 else:
-                    logger.info('Finished processing directory: {0}'.format(orig_dir))
+                    logger.info('Finished processing directory: {0}'.format(temp_dir))
+
+            if not os.path.exists(out_dir):
+                os.mkdir(out_dir)
+
+            logger.debug('Moveing files from tempory directory: {0} to: {1}'.format(temp_dir, out_dir))
+
+            for f in os.listdir(temp_dir):
+                logger.debug('Moveing file: {0} to: {1}'.format(f, out_dir)
+                shutil.move(os.path.join(temp_dir, f), out_dir)
+            
+                logger.debug('Removing tempory directory: {0}'.format(temp_dir))
+            shutil.rmtree(temp_dir, ignore_errors=True)
     else:
         logger.warn('This must be a single file torrent, exiting!')
 
