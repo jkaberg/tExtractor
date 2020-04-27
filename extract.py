@@ -5,16 +5,14 @@ import logging
 import tempfile
 import argparse
 import subprocess
-
-from shutil import which
-
+import shutil
 
 EXTRACT_DIR = '__extracted'
 EXTRACTED_FILES = []
 COMMANDS = {'.rar': 'unrar -r -o- e',
             '.001': 'unrar -r -o- e',
             '.zip': 'unzip -u -d'
-           }
+            }
 
 
 def find_files(path):
@@ -41,7 +39,7 @@ def extract(paths, out_dir):
         cmd = COMMANDS.get(ext)
 
         util = cmd.split()[0]
-        exec_path = which(util)
+        exec_path = shutil.which(util)
         if not exec_path:
             logger.error('Cant find executable {0}, not extracting {1}'.format(util, p))
             continue
@@ -75,13 +73,13 @@ def main(args):
 
         files = find_files(orig_dir)
 
-        # extact compressed archives found in the orginal path
+        # extact compressed archives found in the original path
         if files:
-            logger.debug('Files in orginal path: {0}'.format(files))
+            logger.debug('Files in original path: {0}'.format(files))
 
             extract(files, temp_dir)
 
-            # extract (also nested) archives found in the output path, if we found files in the orginal path
+            # extract (also nested) archives found in the output path, if we found files in the original path
             while files:
                 files = find_files(temp_dir)
 
@@ -94,13 +92,13 @@ def main(args):
             if not os.path.exists(out_dir):
                 os.mkdir(out_dir)
 
-            logger.debug('Moveing files from tempory directory: {0} to: {1}'.format(temp_dir, out_dir))
+            logger.debug('Moving files from temporary directory: {0} to: {1}'.format(temp_dir, out_dir))
 
             for f in os.listdir(temp_dir):
-                logger.debug('Moveing file: {0} to: {1}'.format(f, out_dir)
+                logger.debug('Moving file: {0} to: {1}'.format(f, out_dir))
                 shutil.move(os.path.join(temp_dir, f), out_dir)
-            
-                logger.debug('Removing tempory directory: {0}'.format(temp_dir))
+
+                logger.debug('Removing temporary directory: {0}'.format(temp_dir))
             shutil.rmtree(temp_dir, ignore_errors=True)
     else:
         logger.warn('This must be a single file torrent, exiting!')
