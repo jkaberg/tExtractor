@@ -65,7 +65,16 @@ def main(args):
     orig_dir = os.path.join(args.path, args.name)
     logger.debug('Processing directory: {0}'.format(orig_dir))
     out_dir = find_path(args.path, args.name)
-    temp_dir = tempfile.mkdtemp()
+    if args.tmp:
+        try:
+            temp_dir = tempfile.mkdtemp(dir=args.tmp)
+        except:
+            logger.warn('Failed to create temporary extraction directory in specified location. Falling back to system default.')
+            temp_dir = tempfile.mkdtemp()
+    else:
+        temp_dir = tempfile.mkdtemp()
+
+    logger.debug('Using temporary extraction directory: {0}'.format(temp_dir))
 
     # no out_dir means this is a single file torrent
     if out_dir:
@@ -109,6 +118,7 @@ if __name__ == "__main__":
     parser.add_argument('id', type=str, help="The HASH/ID of the torrent")
     parser.add_argument('name', type=str, help="The name of the torrent")
     parser.add_argument('path', type=str, help="Absolute path to the root download location")
+    parser.add_argument("-t", "--tmp", help="Absolute path to temp extraction directory (must exist)")
     parser.add_argument("-v", "--verbose", help="Set loglevel to debug", action="store_true")
     args = parser.parse_args()
 
