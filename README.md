@@ -5,7 +5,7 @@ The script will recursively scan the `<download_location>/<torrent_name>` folder
 
 ## Help
 
-The extract.py script has 4 parameters:
+The extract.py script has 5 parameters:
 
 Positional parameters:
 - Postion 1: torrent hash/id - currently not used
@@ -13,6 +13,7 @@ Positional parameters:
 - Postion 3: the download location
 
 Optional parameters:
+- -t DIR / --tmp DIR: Specify a custom temporary directory to perform extraction into. NOTE: DIR must exist.
 - -v / --verbose: debug output
 
 
