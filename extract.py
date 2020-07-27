@@ -107,10 +107,15 @@ def main(args):
                 logger.debug('Moving file: {0} to: {1}'.format(f, out_dir))
                 shutil.move(os.path.join(temp_dir, f), out_dir)
 
-                logger.debug('Removing temporary directory: {0}'.format(temp_dir))
-            shutil.rmtree(temp_dir, ignore_errors=True)
     else:
         logger.warn('This must be a single file torrent, exiting!')
+
+    if temp_dir:
+        logger.debug('Removing temporary directory: {0}'.format(temp_dir))
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except:
+            logger.warn('Failed to remove temporary extraction directory: {0}'.format(temp_dir))
 
 
 if __name__ == "__main__":
