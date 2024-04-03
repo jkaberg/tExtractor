@@ -69,7 +69,7 @@ def main(args):
         try:
             temp_dir = tempfile.mkdtemp(dir=args.tmp)
         except:
-            logger.warn('Failed to create temporary extraction directory in specified location. Falling back to system default.')
+            logger.warning('Failed to create temporary extraction directory in specified location. Falling back to system default.')
             temp_dir = tempfile.mkdtemp()
     else:
         temp_dir = tempfile.mkdtemp()
@@ -108,14 +108,14 @@ def main(args):
                 shutil.move(os.path.join(temp_dir, f), out_dir)
 
     else:
-        logger.warn('This must be a single file torrent, exiting!')
+        logger.warning('This must be a single file torrent, exiting!')
 
     if temp_dir:
         logger.debug('Removing temporary directory: {0}'.format(temp_dir))
         try:
             shutil.rmtree(temp_dir, ignore_errors=True)
         except:
-            logger.warn('Failed to remove temporary extraction directory: {0}'.format(temp_dir))
+            logger.warning('Failed to remove temporary extraction directory: {0}'.format(temp_dir))
 
 
 if __name__ == "__main__":
