@@ -26,31 +26,144 @@ COMMAND_PATTERNS = [
 ]
 
 
-def rar_command_spec(lower_name):
-    rar_like = False
-    is_primary = False
+def _spec_for_suffix(suffix):
+    for suf, spec in COMMAND_PATTERNS:
+        if suf == suffix:
+            return spec
+    return None
+
+
+def _is_primary_part(part_str):
+    return int(part_str.lstrip("0") or "0") == 1
+
+
+def _detect_7z_split(file_path):
+    """Return spec for primary 7z split volumes (.7z.001 or .part1.7z)."""
+    lower_name = os.path.basename(file_path).lower()
+
+    if lower_name.endswith('.7z.001'):
+        return _spec_for_suffix('.7z')
+
+    part_match = re.search(r'\.part(\d+)\.7z$', lower_name)
+    if part_match:
+        return _spec_for_suffix('.7z') if _is_primary_part(part_match.group(1)) else None
+    return None
+
+
+def _detect_zip_split(file_path):
+    """
+    Return spec for zip or split-zip primary.
+    - Prefer the .zip if present.
+    - If only split parts (.zip.001/.z01) exist, use 7z to extract.
+    """
+    lower_name = os.path.basename(file_path).lower()
+    dir_path = os.path.dirname(file_path)
+    base_name = os.path.basename(file_path)
+
+    if lower_name.endswith('.zip'):
+        return _spec_for_suffix('.zip')
+
+    if lower_name.endswith('.zip.001') or lower_name.endswith('.z01'):
+        base = re.sub(r'\.(zip\.001|z01)$', '', base_name, flags=re.IGNORECASE)
+        zip_candidate = os.path.join(dir_path, f"{base}.zip")
+        if os.path.exists(zip_candidate):
+            return None
+        return _spec_for_suffix('.7z')
+    return None
+
+
+def _detect_tar_split(file_path):
+    """Return spec for tar-like splits; handled via 7z."""
+    lower_name = os.path.basename(file_path).lower()
+    dir_path = os.path.dirname(file_path)
+    tar_split_suffixes = [
+        '.tar.gz.001', '.tgz.001',
+        '.tar.bz2.001', '.tbz2.001',
+        '.tar.xz.001', '.txz.001',
+        '.tar.001',
+    ]
+    for suf in tar_split_suffixes:
+        if lower_name.endswith(suf):
+            base = lower_name[:-len(suf)]
+            existing_candidates = [
+                os.path.join(dir_path, f"{base}.tar.gz"),
+                os.path.join(dir_path, f"{base}.tgz"),
+                os.path.join(dir_path, f"{base}.tar.bz2"),
+                os.path.join(dir_path, f"{base}.tbz2"),
+                os.path.join(dir_path, f"{base}.tar.xz"),
+                os.path.join(dir_path, f"{base}.txz"),
+                os.path.join(dir_path, f"{base}.tar"),
+            ]
+            if any(os.path.exists(c) for c in existing_candidates):
+                return None
+            return _spec_for_suffix('.7z')
+    return None
+
+
+def _detect_rar_split(file_path):
+    """
+    Return spec for RAR primary volume.
+    - .rar
+    - .part1/.part01.rar
+    - .001 only if no sibling .rar/.part1.rar exists
+    - .r00 only if no sibling .rar/.part1.rar exists
+    """
+    lower_name = os.path.basename(file_path).lower()
+    dir_path = os.path.dirname(file_path)
+    base_name = os.path.basename(file_path)
+
+    # Avoid misclassifying split 7z parts
+    if lower_name.endswith('.7z.001') or re.search(r'\.part\d+\.7z$', lower_name):
+        return None
 
     if lower_name.endswith('.001'):
-        rar_like, is_primary = True, True
-    else:
-        part_match = re.search(r'\.part(\d+)\.rar$', lower_name)
-        if part_match:
-            rar_like = True
-            is_primary = int(part_match.group(1).lstrip("0") or "0") == 1
-        else:
-            r_match = re.search(r'\.r(\d{2})$', lower_name)
-            if r_match:
-                rar_like = True
-                is_primary = int(r_match.group(1)) == 0
-            elif lower_name.endswith('.rar'):
-                rar_like, is_primary = True, True
+        base = base_name[:-4]
+        rar_candidate = os.path.join(dir_path, f"{base}.rar")
+        part1_candidate = os.path.join(dir_path, f"{base}.part1.rar")
+        if os.path.exists(rar_candidate) or os.path.exists(part1_candidate):
+            return None
+        return _spec_for_suffix('.rar')
 
-    if rar_like and not is_primary:
-        return None
-    if rar_like and is_primary:
-        for suffix, spec in COMMAND_PATTERNS:
-            if suffix == '.rar':
-                return spec
+    part_rar = re.search(r'\.part(\d+)\.rar$', lower_name)
+    if part_rar:
+        base = re.sub(r'\.part\d+\.rar$', '', base_name)
+        rar_candidate = os.path.join(dir_path, f"{base}.rar")
+        if os.path.exists(rar_candidate):
+            return None  # prefer .rar over part1
+        return _spec_for_suffix('.rar') if _is_primary_part(part_rar.group(1)) else None
+
+    r_match = re.search(r'\.r(\d{2})$', lower_name)
+    if r_match and int(r_match.group(1)) == 0:
+        base = re.sub(r'\.r\d{2}$', '', base_name)
+        rar_candidate = os.path.join(dir_path, f"{base}.rar")
+        part1_candidate = os.path.join(dir_path, f"{base}.part1.rar")
+        if os.path.exists(rar_candidate) or os.path.exists(part1_candidate):
+            return None
+        return _spec_for_suffix('.rar')
+
+    if lower_name.endswith('.rar'):
+        base = lower_name[:-4]
+        part1_candidate = os.path.join(dir_path, f"{base}.part1.rar")
+        if os.path.exists(part1_candidate):
+            return None  # prefer part1 over bare .rar of same base
+        return _spec_for_suffix('.rar')
+    return None
+
+
+def multipart_command_spec(file_path):
+    """
+    Return a command spec for multi-part archives if this file is the primary volume.
+    """
+    detectors = (
+        _detect_7z_split,
+        _detect_zip_split,
+        _detect_tar_split,
+        _detect_rar_split,
+    )
+    for detector in detectors:
+        spec = detector(file_path)
+        if spec:
+            return spec
     return None
 
 
@@ -58,9 +171,9 @@ def command_spec_for(file_path):
     """Return (util, builder) for supported archive, or None if not extractable or not primary part."""
     lower_name = os.path.basename(file_path).lower()
 
-    rar_spec = rar_command_spec(lower_name)
-    if rar_spec:
-        return rar_spec
+    multipart_spec = multipart_command_spec(file_path)
+    if multipart_spec:
+        return multipart_spec
 
     for suffix, spec in COMMAND_PATTERNS:
         if lower_name.endswith(suffix):
@@ -88,7 +201,7 @@ def find_files(path, seen):
 
 def extract(paths, out_dir):
     for p in paths:
-        logger.info('Extracting: {0}'.format(p))
+        logger.info('Extracting %s to %s', p, out_dir)
 
         command_spec = command_spec_for(p)
         if not command_spec:
@@ -106,7 +219,7 @@ def extract(paths, out_dir):
         logger.debug('Command argv: {0}'.format(command))
 
         try:
-            subprocess.run(command, check=True)
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
             logger.error('Extraction failed (%s): %s', p, e)
 
@@ -145,7 +258,7 @@ def main(args):
     seen = set()
 
     if not out_dir:
-        logger.warning('This must be a single file torrent, exiting!')
+        logger.debug('This must be a single file torrent, exiting!')
         return
 
     logger.info('Output directory: {0}'.format(out_dir))
@@ -159,7 +272,7 @@ def main(args):
     with temp_context as temp_dir:
         logger.debug('Using temporary extraction directory: {0}'.format(temp_dir))
 
-        files = find_files(orig_dir, seen, prune_dirs={out_dir})
+        files = find_files(orig_dir, seen)
         if not files:
             logger.info('No archives found in: {0}'.format(orig_dir))
             return
