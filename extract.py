@@ -233,64 +233,80 @@ def find_path(path, name):
     return False
 
 
-def safe_move(src, dst_dir, remove_src=False):
-    """Move a file, optionally deleting source only when allowed."""
-    os.makedirs(dst_dir, exist_ok=True)
+def safe_copy(src, dst_dir):
+    """Copy a file using hardlink with copy fallback."""
     try:
-        shutil.move(src, dst_dir)
+        os.makedirs(dst_dir, exist_ok=True)
+    except Exception as e:
+        logger.error('Failed to create destination directory %s: %s', dst_dir, e)
         return
-    except OSError as e:
-        logger.warning('Move failed (%s), falling back to copy: %s -> %s', e, src, dst_dir)
-
+    
     dst_path = os.path.join(dst_dir, os.path.basename(src))
+    
+    # Try hardlink first (efficient for same filesystem)
+    try:
+        os.link(src, dst_path)
+        return
+    except OSError:
+        pass
+    
+    # Fallback to copy
     try:
         shutil.copy2(src, dst_path)
-        if remove_src:
-            os.remove(src)
     except Exception as e:
-        logger.error('Copy fallback failed: %s -> %s (%s)', src, dst_dir, e)
+        logger.error('Copy failed: %s -> %s (%s)', src, dst_dir, e)
+
+
+def extract_all_recursive(start_dir, extract_dir):
+    """Recursively extract all archives found in start_dir to extract_dir."""
+    seen = set()
+    files = find_files(start_dir, seen)
+    if not files:
+        logger.info('No archives found in: {0}'.format(start_dir))
+        return False
+    
+    while files:
+        logger.debug('Files queued for extraction: {0}'.format(files))
+        extract(files, extract_dir)
+        files = find_files(extract_dir, seen)
+    
+    logger.info('Finished processing directory: {0}'.format(start_dir))
+    return True
 
 
 def main(args):
     orig_dir = os.path.join(args.path, args.name)
-    logger.debug('Processing directory: {0}'.format(orig_dir))
     out_dir = find_path(args.path, args.name)
-    seen = set()
-
+    
     if not out_dir:
-        logger.debug('This must be a single file torrent, exiting!')
+        logger.debug('Single file torrent, exiting')
         return
-
-    logger.info('Output directory: {0}'.format(out_dir))
-
+    
+    logger.debug('Processing: {0} -> {1}'.format(orig_dir, out_dir))
+    os.makedirs(out_dir, exist_ok=True)
+    
+    # Direct mode: extract straight to output directory
+    if args.direct:
+        logger.info('Direct extraction to: {0}'.format(out_dir))
+        extract_all_recursive(orig_dir, out_dir)
+        return
+    
+    # Temp mode: extract to temp, then move
     try:
         temp_context = tempfile.TemporaryDirectory(dir=args.tmp) if args.tmp else tempfile.TemporaryDirectory()
     except Exception:
-        logger.warning('Failed to create temporary extraction directory in specified location. Falling back to system default.')
+        logger.warning('Failed to create temp directory in specified location, using system default')
         temp_context = tempfile.TemporaryDirectory()
-
+    
     with temp_context as temp_dir:
-        logger.debug('Using temporary extraction directory: {0}'.format(temp_dir))
-
-        files = find_files(orig_dir, seen)
-        if not files:
-            logger.info('No archives found in: {0}'.format(orig_dir))
+        logger.debug('Extracting via temp directory: {0}'.format(temp_dir))
+        
+        if not extract_all_recursive(orig_dir, temp_dir):
             return
-
-        while files:
-            logger.debug('Files queued for extraction: {0}'.format(files))
-            extract(files, temp_dir)
-            files = find_files(temp_dir, seen)
-            if not files:
-                logger.info('Finished processing directory: {0}'.format(orig_dir))
-
-        os.makedirs(out_dir, exist_ok=True)
-        logger.debug('Moving files from temporary directory: {0} to: {1}'.format(temp_dir, out_dir))
-
+        
+        logger.debug('Copying files: {0} -> {1}'.format(temp_dir, out_dir))
         for f in os.listdir(temp_dir):
-            logger.debug('Moving file: {0} to: {1}'.format(f, out_dir))
-            # files in temp_dir are extraction outputs; safe to delete after copy fallback
-            safe_move(os.path.join(temp_dir, f), out_dir, remove_src=True)
+            safe_copy(os.path.join(temp_dir, f), out_dir)
 
 
 if __name__ == "__main__":
@@ -299,6 +315,7 @@ if __name__ == "__main__":
     parser.add_argument('name', type=str, help="The name of the torrent")
     parser.add_argument('path', type=str, help="Absolute path to the root download location")
     parser.add_argument("-t", "--tmp", help="Absolute path to temp extraction directory (must exist)")
+    parser.add_argument("-d", "--direct", help="Extract directly to __extracted directory", action="store_true")
     parser.add_argument("-v", "--verbose", help="Set loglevel to debug", action="store_true")
     args = parser.parse_args()
 
